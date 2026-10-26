@@ -1,0 +1,11 @@
+{
+  "domain": "game_tracker",
+  "name": "Sports Game Tracker",
+  "codeowners": ["@schrepfer"],
+  "config_flow": false,
+  "documentation": "https://github.com/schrepfer/ha-game-tracker",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
