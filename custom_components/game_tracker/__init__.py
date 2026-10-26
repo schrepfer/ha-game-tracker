@@ -16,6 +16,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import (
     EspnLeagueClient,
@@ -126,8 +127,11 @@ class LeagueScoreboardCoordinator(DataUpdateCoordinator[dict[str, list[TeamGame]
 
     async def _async_update_data(self) -> dict[str, list[TeamGame]]:
         """Fetch league scoreboard and slice games for each tracked team."""
+        local_date_str = dt_util.now().strftime("%Y%m%d")
         try:
-            payload = await self.client.async_fetch_scoreboard()
+            payload = await self.client.async_fetch_scoreboard(
+                local_date_str=local_date_str
+            )
         except GameTrackerError as err:
             raise UpdateFailed(str(err)) from err
 

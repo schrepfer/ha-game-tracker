@@ -1,0 +1,20 @@
+# =============================================================================
+# configuration.yaml addition for `game_tracker`
+# Each entry automatically creates BOTH:
+#   - `binary_sensor.<slug>_game`     (ON during pre_game -> live -> post_game)
+#   - `binary_sensor.<slug>_game_day` (ON all day 00:00–23:59:59 local time)
+# =============================================================================
+
+game_tracker:
+  pre_game:
+    minutes: 15
+  post_game:
+    minutes: 15
+  teams:
+    - sport: football
+      league: nfl
+      team: seahawks          # -> binary_sensor.seahawks_game & binary_sensor.seahawks_game_day
+    # Example to also track Mariners games:
+    # - sport: baseball
+    #   league: mlb
+    #   team: mariners        # -> binary_sensor.mariners_game & binary_sensor.mariners_game_day

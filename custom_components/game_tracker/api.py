@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, tzinfo
 import re
 from typing import TYPE_CHECKING, Any
+from zoneinfo import ZoneInfo
 
 try:
     import aiohttp
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 from .const import DEFAULT_GAME_DURATION, ESPN_BASE_URL, SPORT_DURATIONS
 
+EASTERN_TZ = ZoneInfo("America/New_York")
 CANCELLED_STATUSES = {"STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_SUSPENDED"}
 
 
@@ -96,6 +98,23 @@ def _extract_broadcasts(competition: dict[str, Any]) -> str | None:
     return ", ".join(names) if names else None
 
 
+def merge_scoreboard_payloads(*payloads: dict[str, Any] | None) -> dict[str, Any]:
+    """Merge multiple ESPN scoreboard payloads, deduplicating events by ID."""
+    events_by_id: dict[str, dict[str, Any]] = {}
+    ordered_ids: list[str] = []
+    for payload in payloads:
+        if not payload:
+            continue
+        for ev in payload.get("events") or []:
+            ev_id = str(ev.get("id") or "")
+            if not ev_id:
+                continue
+            if ev_id not in events_by_id:
+                ordered_ids.append(ev_id)
+            events_by_id[ev_id] = ev
+    return {"events": [events_by_id[eid] for eid in ordered_ids]}
+
+
 @dataclass(slots=True)
 class TeamInfo:
     """Metadata for a resolved team in a specific sport/league."""
@@ -138,6 +157,12 @@ class TeamGame:
     period: int | None
     display_clock: str | None
 
+    def game_date(self, local_tz: tzinfo) -> date:
+        """Return the calendar date of this game in `local_tz` (US Eastern for TBD flex dates)."""
+        if self.time_tbd:
+            return self.start_utc.astimezone(EASTERN_TZ).date()
+        return self.start_utc.astimezone(local_tz).date()
+
     def is_active(
         self,
         now: datetime,
@@ -164,6 +189,14 @@ class TeamGame:
             return window_start <= now < (end_anchor + post_delta)
 
         return window_start <= now < self.end_utc
+
+    def is_on_game_day(self, now: datetime, local_tz: tzinfo) -> bool:
+        """Return True all day (00:00–23:59:59 in `local_tz`) on game day, or while live past midnight."""
+        if self.status_name in CANCELLED_STATUSES:
+            return False
+        if self.state == "in":
+            return True
+        return self.game_date(local_tz) == now.astimezone(local_tz).date()
 
 
 def match_team_from_directory(
@@ -378,6 +411,21 @@ def select_active_game(
     return None
 
 
+def select_game_day_game(
+    games: list[TeamGame],
+    now: datetime,
+    local_tz: tzinfo,
+) -> TeamGame | None:
+    """Return today's game in `local_tz` (preferring a live 'in' game if doubleheader/midnight)."""
+    for g in games:
+        if g.state == "in" and g.is_on_game_day(now, local_tz):
+            return g
+    for g in games:
+        if g.is_on_game_day(now, local_tz):
+            return g
+    return None
+
+
 class EspnLeagueClient:
     """Async ESPN client scoped to a single (sport, league) pair."""
 
@@ -404,9 +452,11 @@ class EspnLeagueClient:
         """Teams directory URL for this sport/league."""
         return f"{ESPN_BASE_URL}/{self.sport}/{self.league}/teams?limit=500"
 
-    async def _fetch_json(self, url: str) -> dict[str, Any]:
+    async def _fetch_json(
+        self, url: str, params: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         try:
-            async with self._session.get(url, timeout=self._timeout) as resp:
+            async with self._session.get(url, params=params, timeout=self._timeout) as resp:
                 resp.raise_for_status()
                 return await resp.json(content_type=None)
         except (aiohttp.ClientError, TimeoutError, ValueError) as err:
@@ -434,6 +484,19 @@ class EspnLeagueClient:
             league=self.league,
         )
 
-    async def async_fetch_scoreboard(self) -> dict[str, Any]:
-        """Fetch current scoreboard JSON for this sport/league."""
-        return await self._fetch_json(self.scoreboard_url)
+    async def async_fetch_scoreboard(
+        self, local_date_str: str | None = None
+    ) -> dict[str, Any]:
+        """Fetch current scoreboard JSON (and merge explicit `dates=YYYYMMDD` for daily sports)."""
+        default_payload = await self._fetch_json(self.scoreboard_url)
+        if not local_date_str:
+            return default_payload
+
+        try:
+            today_payload = await self._fetch_json(
+                self.scoreboard_url, params={"dates": local_date_str}
+            )
+        except GameTrackerError:
+            return default_payload
+
+        return merge_scoreboard_payloads(default_payload, today_payload)
