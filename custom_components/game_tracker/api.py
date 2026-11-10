@@ -163,14 +163,8 @@ class TeamGame:
             return self.start_utc.astimezone(EASTERN_TZ).date()
         return self.start_utc.astimezone(local_tz).date()
 
-    def is_active(
-        self,
-        now: datetime,
-        pre_game: timedelta = timedelta(0),
-        post_game: timedelta = timedelta(0),
-        completed_at: datetime | None = None,
-    ) -> bool:
-        """Return True if this game (including pre/post buffers) is currently active."""
+    def is_active(self, now: datetime) -> bool:
+        """Return True if this game is currently active."""
         if self.time_tbd or self.status_name in CANCELLED_STATUSES:
             return False
 
@@ -178,17 +172,10 @@ class TeamGame:
         if self.state == "in":
             return True
 
-        pre_delta = max(timedelta(0), pre_game)
-        post_delta = max(timedelta(0), post_game)
-        window_start = self.start_utc - pre_delta
-
         if self.completed or self.state == "post":
-            if post_delta <= timedelta(0):
-                return False
-            end_anchor = completed_at or self.end_utc
-            return window_start <= now < (end_anchor + post_delta)
+            return False
 
-        return window_start <= now < self.end_utc
+        return self.start_utc <= now < self.end_utc
 
     def is_on_game_day(self, now: datetime, local_tz: tzinfo) -> bool:
         """Return True all day (00:00–23:59:59 in `local_tz`) on game day, or while live past midnight."""
@@ -392,21 +379,13 @@ def parse_scoreboard_for_team(
 def select_active_game(
     games: list[TeamGame],
     now: datetime,
-    pre_game: timedelta = timedelta(0),
-    post_game: timedelta = timedelta(0),
-    completed_timestamps: dict[str, datetime] | None = None,
 ) -> TeamGame | None:
     """Return the active game (doubleheader-safe, preferring live 'in' games)."""
-    completed_map = completed_timestamps or {}
     for g in games:
-        if g.state == "in" and g.is_active(
-            now, pre_game, post_game, completed_map.get(g.event_id)
-        ):
+        if g.state == "in" and g.is_active(now):
             return g
     for g in games:
-        if g.is_active(
-            now, pre_game, post_game, completed_map.get(g.event_id)
-        ):
+        if g.is_active(now):
             return g
     return None
 

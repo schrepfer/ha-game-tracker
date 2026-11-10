@@ -30,14 +30,10 @@ from .api import (
 from .const import (
     ACTIVE_SCAN_INTERVAL,
     CONF_LEAGUE,
-    CONF_POST_GAME,
-    CONF_PRE_GAME,
     CONF_SLUG,
     CONF_SPORT,
     CONF_TEAM,
     CONF_TEAMS,
-    DEFAULT_POST_GAME,
-    DEFAULT_PRE_GAME,
     DOMAIN,
     IDLE_SCAN_INTERVAL,
 )
@@ -50,8 +46,6 @@ TEAM_ITEM_SCHEMA = vol.Schema(
         vol.Required(CONF_LEAGUE): cv.string,
         vol.Required(CONF_TEAM): cv.string,
         vol.Optional(CONF_SLUG): cv.string,
-        vol.Optional(CONF_PRE_GAME): cv.positive_time_period,
-        vol.Optional(CONF_POST_GAME): cv.positive_time_period,
     }
 )
 
@@ -60,12 +54,6 @@ CONFIG_SCHEMA = vol.Schema(
         vol.Optional(DOMAIN): vol.Schema(
             {
                 vol.Required(CONF_TEAMS): vol.All(cv.ensure_list, [TEAM_ITEM_SCHEMA]),
-                vol.Optional(
-                    CONF_PRE_GAME, default=DEFAULT_PRE_GAME
-                ): cv.positive_time_period,
-                vol.Optional(
-                    CONF_POST_GAME, default=DEFAULT_POST_GAME
-                ): cv.positive_time_period,
             }
         )
     },
@@ -79,8 +67,6 @@ class TrackedTeamConfig:
 
     team_info: TeamInfo
     entity_slug: str
-    pre_game: timedelta
-    post_game: timedelta
 
 
 class LeagueScoreboardCoordinator(DataUpdateCoordinator[dict[str, list[TeamGame]]]):
@@ -100,25 +86,17 @@ class LeagueScoreboardCoordinator(DataUpdateCoordinator[dict[str, list[TeamGame]
         )
         self.client = client
         self.tracked_teams = tracked_teams
-        self._previous_states: dict[str, str] = {}
-        self.completed_timestamps: dict[str, datetime] = {}
 
     def _should_poll_frequently(
         self, games_by_slug: dict[str, list[TeamGame]], now: datetime
     ) -> bool:
         """Poll every 60s when any tracked team in this league is active or within 2h of start."""
+        lookahead = timedelta(hours=2)
         for cfg in self.tracked_teams:
             team_games = games_by_slug.get(cfg.entity_slug, [])
-            if select_active_game(
-                team_games,
-                now,
-                pre_game=cfg.pre_game,
-                post_game=cfg.post_game,
-                completed_timestamps=self.completed_timestamps,
-            ):
+            if select_active_game(team_games, now):
                 return True
 
-            lookahead = timedelta(hours=2) + max(timedelta(0), cfg.pre_game)
             for game in team_games:
                 if not game.time_tbd and not game.completed and game.state != "post":
                     if now <= game.start_utc <= (now + lookahead):
@@ -139,15 +117,9 @@ class LeagueScoreboardCoordinator(DataUpdateCoordinator[dict[str, list[TeamGame]
         games_by_slug: dict[str, list[TeamGame]] = {}
 
         for cfg in self.tracked_teams:
-            team_games = parse_scoreboard_for_team(
+            games_by_slug[cfg.entity_slug] = parse_scoreboard_for_team(
                 payload, cfg.team_info, sport=self.client.sport
             )
-            for g in team_games:
-                prev = self._previous_states.get(g.event_id)
-                if prev == "in" and (g.state == "post" or g.completed):
-                    self.completed_timestamps[g.event_id] = now
-                self._previous_states[g.event_id] = g.state
-            games_by_slug[cfg.entity_slug] = team_games
 
         self.update_interval = (
             ACTIVE_SCAN_INTERVAL
@@ -163,8 +135,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return True
 
     conf: dict[str, Any] = config[DOMAIN]
-    default_pre: timedelta = conf[CONF_PRE_GAME]
-    default_post: timedelta = conf[CONF_POST_GAME]
     raw_entries: list[dict[str, Any]] = conf[CONF_TEAMS]
 
     session = async_get_clientsession(hass)
@@ -211,7 +181,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         slug_counts[base_slug] = slug_counts.get(base_slug, 0) + 1
         resolved_items.append((key, entry, team_info, base_slug))
 
-    for key, entry, team_info, base_slug in resolved_items:
+    for key, _entry, team_info, base_slug in resolved_items:
         entity_slug = (
             f"{base_slug}_{slugify_name(team_info.league)}"
             if slug_counts[base_slug] > 1
@@ -220,8 +190,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         tracked = TrackedTeamConfig(
             team_info=team_info,
             entity_slug=entity_slug,
-            pre_game=entry.get(CONF_PRE_GAME, default_pre),
-            post_game=entry.get(CONF_POST_GAME, default_post),
         )
         grouped_teams.setdefault(key, []).append(tracked)
 

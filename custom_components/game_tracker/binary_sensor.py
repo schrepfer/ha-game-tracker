@@ -120,7 +120,7 @@ class _BaseTeamBinarySensor(
 
 
 class GameTrackerBinarySensor(_BaseTeamBinarySensor):
-    """Binary sensor turning ON while a tracked team's game is live (plus pre/post buffers)."""
+    """Binary sensor turning ON while a tracked team's game is live."""
 
     def __init__(
         self,
@@ -136,13 +136,7 @@ class GameTrackerBinarySensor(_BaseTeamBinarySensor):
 
     def _active_game(self, now: datetime | None = None) -> TeamGame | None:
         ref_now = now or datetime.now(timezone.utc)
-        return select_active_game(
-            self._games,
-            ref_now,
-            pre_game=self._cfg.pre_game,
-            post_game=self._cfg.post_game,
-            completed_timestamps=self.coordinator.completed_timestamps,
-        )
+        return select_active_game(self._games, ref_now)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -162,23 +156,18 @@ class GameTrackerBinarySensor(_BaseTeamBinarySensor):
 
     @callback
     def _schedule_next_boundary(self) -> None:
-        """Schedule exact wakeup at the next pre-game start or post-game end."""
+        """Schedule exact wakeup at the next game start or estimated end."""
         self._cancel_timer()
         now = datetime.now(timezone.utc)
-        pre_delta = max(timedelta(0), self._cfg.pre_game)
-        post_delta = max(timedelta(0), self._cfg.post_game)
 
         candidates: list[datetime] = []
         for g in self._games:
-            if g.time_tbd:
+            if g.time_tbd or g.completed or g.state == "post":
                 continue
-            win_start = g.start_utc - pre_delta
-            end_anchor = self.coordinator.completed_timestamps.get(g.event_id, g.end_utc)
-            win_end = end_anchor + post_delta
-            if win_start > now:
-                candidates.append(win_start)
-            if win_end > now:
-                candidates.append(win_end)
+            if g.start_utc > now:
+                candidates.append(g.start_utc)
+            if g.end_utc > now:
+                candidates.append(g.end_utc)
 
         if candidates:
             self._unsub_timer = async_track_point_in_utc_time(
@@ -189,18 +178,15 @@ class GameTrackerBinarySensor(_BaseTeamBinarySensor):
 
     @property
     def is_on(self) -> bool:
-        """Return True while a game (including pre/post buffers) is active."""
+        """Return True while a game is active."""
         return self._active_game() is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose team colors, buffer durations, and current/upcoming scoreboard info."""
+        """Expose team colors and current/upcoming scoreboard info."""
         now = datetime.now(timezone.utc)
         target = self._active_game(now) or self._next_or_latest_game(now)
-        attrs = self._format_attributes(target)
-        attrs["pre_game"] = str(self._cfg.pre_game)
-        attrs["post_game"] = str(self._cfg.post_game)
-        return attrs
+        return self._format_attributes(target)
 
 
 class GameTrackerGameDayBinarySensor(_BaseTeamBinarySensor):

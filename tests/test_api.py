@@ -211,7 +211,7 @@ class GameTrackerApiTests(unittest.TestCase):
         assert info is not None
         self.assertEqual(info.default_slug, "sounders")
 
-    def test_active_windows_with_timedeltas_and_tbd_protection(self) -> None:
+    def test_active_windows_and_tbd_protection(self) -> None:
         sea_info = api.match_team_from_directory(
             SAMPLE_TEAMS_DIRECTORY, "seahawks", "football", "nfl"
         )
@@ -219,27 +219,26 @@ class GameTrackerApiTests(unittest.TestCase):
         games = api.parse_scoreboard_for_team(SAMPLE_SCOREBOARD, sea_info, sport="football")
         self.assertEqual(len(games), 1)
         g = games[0]  # Kickoff 2026-10-25T17:00:00Z
-        buf = timedelta(minutes=15, seconds=30)
 
         self.assertFalse(
-            g.is_active(datetime(2026, 10, 25, 16, 40, tzinfo=timezone.utc), buf, buf)
+            g.is_active(datetime(2026, 10, 25, 16, 59, 59, tzinfo=timezone.utc))
         )
         self.assertTrue(
-            g.is_active(datetime(2026, 10, 25, 16, 44, 30, tzinfo=timezone.utc), buf, buf)
+            g.is_active(datetime(2026, 10, 25, 17, 0, 0, tzinfo=timezone.utc))
         )
 
         # Live overtime 4 hours after kickoff -> ON
         g.state = "in"
         self.assertTrue(
-            g.is_active(datetime(2026, 10, 25, 21, 10, tzinfo=timezone.utc), buf, buf)
+            g.is_active(datetime(2026, 10, 25, 21, 10, tzinfo=timezone.utc))
         )
 
-        # Post-game buffer after completion
+        # Completed game -> OFF
         g.state = "post"
         g.completed = True
-        done_at = datetime(2026, 10, 25, 21, 15, tzinfo=timezone.utc)
-        self.assertTrue(g.is_active(done_at + timedelta(minutes=15), buf, buf, done_at))
-        self.assertFalse(g.is_active(done_at + timedelta(minutes=16), buf, buf, done_at))
+        self.assertFalse(
+            g.is_active(datetime(2026, 10, 25, 21, 15, tzinfo=timezone.utc))
+        )
 
         # TBD game must never trigger `is_active` at placeholder time
         lv_info = api.match_team_from_directory(
@@ -250,7 +249,7 @@ class GameTrackerApiTests(unittest.TestCase):
         self.assertTrue(lv_games[0].time_tbd)
         self.assertFalse(
             lv_games[0].is_active(
-                datetime(2027, 1, 10, 5, 5, tzinfo=timezone.utc), buf, buf
+                datetime(2027, 1, 10, 5, 5, tzinfo=timezone.utc)
             )
         )
 

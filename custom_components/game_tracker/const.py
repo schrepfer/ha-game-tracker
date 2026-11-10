@@ -14,12 +14,6 @@ CONF_TEAM = "team"
 CONF_SPORT = "sport"
 CONF_LEAGUE = "league"
 CONF_SLUG = "slug"
-CONF_PRE_GAME = "pre_game"
-CONF_POST_GAME = "post_game"
-
-# Defaults (no buffer unless specified)
-DEFAULT_PRE_GAME = timedelta(0)
-DEFAULT_POST_GAME = timedelta(0)
 
 # Estimated fallback game durations per sport (live ESPN state overrides during play/OT/extra innings)
 SPORT_DURATIONS: dict[str, timedelta] = {

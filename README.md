@@ -8,7 +8,7 @@
 A lightweight Home Assistant custom integration that tracks live sports schedules and game states across **NFL, MLB, NHL, NBA, WNBA, MLS, NWSL, College Football/Basketball, European Soccer**, and other ESPN-covered leagues.
 
 For each configured team, `game_tracker` automatically creates **two** `binary_sensor` entities:
-* **`binary_sensor.<slug>_game`** — Turns **`on`** while your team is playing (from `pre_game` before kickoff/first pitch through `post_game` after the final whistle) and **`off`** when it ends.
+* **`binary_sensor.<slug>_game`** — Turns **`on`** while your team's game is live and **`off`** when it ends.
 * **`binary_sensor.<slug>_game_day`** — Turns **`on`** all day (`00:00:00` – `23:59:59` in your Home Assistant server's local timezone) whenever your team has a game scheduled that day (ideal for keeping evening house lights in team colors even when the game kicked off at 10:00 AM).
 
 ---
@@ -68,10 +68,6 @@ Add the `game_tracker:` block to your Home Assistant `configuration.yaml` file (
 ```yaml
 # configuration.yaml
 game_tracker:
-  pre_game:
-    minutes: 15
-  post_game:
-    minutes: 15
   teams:
     - sport: football
       league: nfl
@@ -79,7 +75,7 @@ game_tracker:
 ```
 
 This creates:
-* **`binary_sensor.seahawks_game`** (`on` during the game + buffers)
+* **`binary_sensor.seahawks_game`** (`on` during the game)
 * **`binary_sensor.seahawks_game_day`** (`on` all day on Seahawks game days)
 
 ### Multi-Sport & Advanced Example
@@ -87,9 +83,6 @@ This creates:
 ```yaml
 # configuration.yaml
 game_tracker:
-  pre_game: "00:15:00"
-  post_game:
-    minutes: 15
   teams:
     - sport: football
       league: nfl
@@ -98,10 +91,6 @@ game_tracker:
     - sport: baseball
       league: mlb
       team: mariners          # -> binary_sensor.mariners_game & binary_sensor.mariners_game_day
-      pre_game:               # Optional per-team buffer override
-        minutes: 5
-      post_game:
-        minutes: 10
 
     # Teams sharing a nickname across leagues disambiguate automatically
     # (`cardinals_nfl_*` / `cardinals_mlb_*`), or accept a custom `slug`:
@@ -121,8 +110,6 @@ game_tracker:
 | Key | Type | Required | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `teams` | list | **Yes** | — | List of team mappings to track (see below). |
-| `pre_game` | time period | No | `00:00:00` | Default duration before start time to turn `binary_sensor.<slug>_game` `on`. Accepts `{days, hours, minutes, seconds, milliseconds}`, `"HH:MM:SS"`, or integer seconds. |
-| `post_game` | time period | No | `00:00:00` | Default duration after game completion to keep `binary_sensor.<slug>_game` `on`. |
 
 #### `teams` Item Variables
 
@@ -132,8 +119,6 @@ game_tracker:
 | `league` | string | **Yes** | — | ESPN league path segment (e.g., `nfl`, `mlb`, `nhl`, `nba`, `usa.1`). |
 | `team` | string | **Yes** | — | Team abbreviation (`sea`, `lv`), nickname (`seahawks`, `raiders`), or full name (`Seattle Seahawks`) — case-insensitive. |
 | `slug` | string | No | Auto | Custom entity ID slug resulting in `binary_sensor.<slug>_game` and `binary_sensor.<slug>_game_day`. |
-| `pre_game` | time period | No | Global `pre_game` | Per-team override for `pre_game`. |
-| `post_game` | time period | No | Global `post_game` | Per-team override for `post_game`. |
 
 ### Common ESPN `sport` & `league` Identifiers
 
@@ -205,7 +190,7 @@ python3 scripts/preview_scoreboard.py football/nfl/cardinals baseball/mlb/cardin
 ## Entities & State Attributes
 
 Each entry in `teams` creates two binary sensors:
-* **`binary_sensor.<slug>_game`** — `on` during `pre_game` → live broadcast (including OT/delays) → `post_game`, `off` otherwise.
+* **`binary_sensor.<slug>_game`** — `on` during the live broadcast (including OT/delays), `off` otherwise.
 * **`binary_sensor.<slug>_game_day`** — `on` from `00:00:00` to `23:59:59` local time on days with a scheduled (non-postponed/non-canceled) game, and stays `on` past midnight if a night game is still `in` progress.
 
 Both entities expose the following state attributes:
@@ -218,7 +203,6 @@ Both entities expose the following state attributes:
 | `logo` | `"https://a.espncdn.com/..."` | Team logo URL. |
 | `primary_color_hex` / `primary_color_rgb` | `"#002244"` / `[0, 34, 68]` | Official primary team color (ready for `rgb_color` light actions). |
 | `secondary_color_hex` / `secondary_color_rgb` | `"#69BE28"` / `[105, 190, 40]` | Official secondary team color. |
-| `pre_game` / `post_game` | `"0:15:00"` | Configured active buffer durations *(present on `<slug>_game`)*. |
 | `game_date` | `"2026-10-25"` | Local calendar date (`YYYY-MM-DD`) of the current or next game. |
 | `matchup` / `short_name` | `"Chicago Bears at Seattle Seahawks"` / `"CHI @ SEA"` | Current or next game on the scoreboard. |
 | `opponent` / `opponent_abbr` | `"Chicago Bears"` / `"CHI"` | Opponent name and abbreviation. |
@@ -237,7 +221,7 @@ Both entities expose the following state attributes:
 ### 1. Live Game Window vs. All-Day Game Day
 
 ```jinja2
-{# True only while the Seahawks game (+ pre/post buffers) is actively on: #}
+{# True only while the Seahawks game is actively on: #}
 {{ is_state('binary_sensor.seahawks_game', 'on') }}
 
 {# True all day Sunday (even after a 10:00 AM kickoff finishes) for evening house lights: #}

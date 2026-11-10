@@ -8,7 +8,7 @@ Usage examples:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import importlib.util
 import json
 from pathlib import Path
@@ -88,8 +88,6 @@ def main(argv: list[str]) -> None:
         slug_counts[info.default_slug] = slug_counts.get(info.default_slug, 0) + 1
         resolved.append((key, info))
 
-    buf = timedelta(minutes=15)
-
     for key, info in resolved:
         sport, league = key
         entity_slug = (
@@ -98,7 +96,7 @@ def main(argv: list[str]) -> None:
             else info.default_slug
         )
         games = api.parse_scoreboard_for_team(sb_cache[key], info, sport=sport)
-        active = api.select_active_game(games, now, pre_game=buf, post_game=buf)
+        active = api.select_active_game(games, now)
         game_day = api.select_game_day_game(games, now, local_tz)
 
         if games:
