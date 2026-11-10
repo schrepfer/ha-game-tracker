@@ -25,7 +25,7 @@ For each configured team, `game_tracker` automatically creates **two** `binary_s
 
 ## Installation
 
-You can install **Sports Game Tracker** on Home Assistant 2026.11+ using the built-in **Marketplace** or standard terminal commands.
+You can install **Sports Game Tracker** on Home Assistant 2026.11+ using the built-in **Marketplace** or by copying the integration directory via `rsync` / `scp`.
 
 ### Method 1: Home Assistant Marketplace (Recommended)
 
@@ -39,59 +39,23 @@ Or add it directly in Home Assistant:
 
 ---
 
-### Method 2: Home Assistant OS / Supervised (Terminal & SSH Add-on)
-
-Paste this single command directly into the Home Assistant **Terminal & SSH** add-on (works for both fresh installs and upgrades, no `git` required):
-
-```bash
-tmp=$(mktemp -d) && \
-  curl -fsSL https://github.com/schrepfer/ha-game-tracker/archive/refs/heads/main.tar.gz | tar -xz -C "$tmp" && \
-  mkdir -p /config/custom_components && \
-  rm -rf /config/custom_components/game_tracker && \
-  mv "$tmp"/ha-game-tracker-main/custom_components/game_tracker /config/custom_components/ && \
-  rm -rf "$tmp" && \
-  ha core restart
-```
-
----
-
-### Method 3: Home Assistant Container (Docker) or Core
-
-Set `HA_CONFIG` to your Home Assistant configuration directory (for example `/opt/homeassistant/config` or `~/.homeassistant`), extract `custom_components/game_tracker`, and restart Home Assistant:
-
-```bash
-HA_CONFIG=/path/to/homeassistant/config
-
-tmp=$(mktemp -d) && \
-  curl -fsSL https://github.com/schrepfer/ha-game-tracker/archive/refs/heads/main.tar.gz | tar -xz -C "$tmp" && \
-  mkdir -p "$HA_CONFIG/custom_components" && \
-  rm -rf "$HA_CONFIG/custom_components/game_tracker" && \
-  mv "$tmp"/ha-game-tracker-main/custom_components/game_tracker "$HA_CONFIG/custom_components/" && \
-  rm -rf "$tmp"
-
-# Restart your Home Assistant container or service:
-docker restart homeassistant
-```
-
----
-
-### Method 4: Copy from Another Machine (`scp` or `rsync`)
+### Method 2: Copy from Another Machine (`rsync` or `scp`)
 
 > **Important:** Inside `<config>/custom_components/`, the directory **must** be named `game_tracker` (matching `"domain": "game_tracker"` in [`manifest.json`](custom_components/game_tracker/manifest.json)).
 
 ```bash
 git clone https://github.com/schrepfer/ha-game-tracker.git
-scp -r ha-game-tracker/custom_components/game_tracker root@homeassistant.local:/config/custom_components/
-```
-
-Or with `rsync`:
-```bash
 rsync -av --exclude='__pycache__' --exclude='*.pyc' \
-  custom_components/game_tracker \
+  ha-game-tracker/custom_components/game_tracker \
   root@homeassistant.local:/config/custom_components/
 ```
 
-Then restart Home Assistant (**Developer Tools → YAML → Restart** or `ha core restart`).
+Or with `scp`:
+```bash
+scp -r ha-game-tracker/custom_components/game_tracker root@homeassistant.local:/config/custom_components/
+```
+
+Then restart Home Assistant (**Developer Tools → YAML → Restart**).
 
 ---
 
