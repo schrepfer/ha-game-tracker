@@ -1,7 +1,7 @@
 # Sports Game Tracker (`game_tracker`)
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.4%2B-41BDF5.svg)](https://www.home-assistant.io/)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Custom-41BDF5.svg)](https://www.home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.11%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](custom_components/game_tracker/manifest.json)
 [![Validate](https://github.com/schrepfer/ha-game-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/schrepfer/ha-game-tracker/actions/workflows/validate.yml)
 
@@ -25,16 +25,17 @@ For each configured team, `game_tracker` automatically creates **two** `binary_s
 
 ## Installation
 
-You can install **Sports Game Tracker** on any Home Assistant server using **HACS** or standard terminal commands.
+You can install **Sports Game Tracker** on Home Assistant 2026.11+ using the built-in **Marketplace** or standard terminal commands.
 
-### Method 1: HACS (Recommended)
+### Method 1: Home Assistant Marketplace (Recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=schrepfer&repository=ha-game-tracker&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=schrepfer&repository=ha-game-tracker&category=integration)
 
-Or add it manually in HACS:
-1. In Home Assistant, open **HACS** → click the top-right menu (`⋮`) → **Custom repositories**.
-2. Paste `https://github.com/schrepfer/ha-game-tracker`, select **Integration** as the category, and click **Add**.
-3. Search for **Sports Game Tracker** in HACS, click **Download**, and **restart Home Assistant**.
+Or add it directly in Home Assistant:
+1. Open **Settings → Marketplace** in Home Assistant.
+2. Click the top-right menu (`⋮`) → **Add from link** (or **Custom repositories**) *(if prompted, link your GitHub account)*.
+3. Paste `https://github.com/schrepfer/ha-game-tracker`, select **Integration**, and click **Add**.
+4. Open **Sports Game Tracker** in the Marketplace, click **Download** / **Install**, and **restart Home Assistant**.
 
 ---
 
@@ -74,7 +75,7 @@ docker restart homeassistant
 
 ---
 
-### Method 4: Git Clone + SCP from Another Machine
+### Method 4: Copy from Another Machine (`scp` or `rsync`)
 
 > **Important:** Inside `<config>/custom_components/`, the directory **must** be named `game_tracker` (matching `"domain": "game_tracker"` in [`manifest.json`](custom_components/game_tracker/manifest.json)).
 
@@ -83,7 +84,14 @@ git clone https://github.com/schrepfer/ha-game-tracker.git
 scp -r ha-game-tracker/custom_components/game_tracker root@homeassistant.local:/config/custom_components/
 ```
 
-Then restart Home Assistant (**Developer Tools → YAML → Restart**).
+Or with `rsync`:
+```bash
+rsync -av --exclude='__pycache__' --exclude='*.pyc' \
+  custom_components/game_tracker \
+  root@homeassistant.local:/config/custom_components/
+```
+
+Then restart Home Assistant (**Developer Tools → YAML → Restart** or `ha core restart`).
 
 ---
 
