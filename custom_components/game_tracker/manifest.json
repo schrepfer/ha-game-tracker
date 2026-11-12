@@ -1,6 +1,9 @@
 {
   "domain": "game_tracker",
   "name": "Sports Game Tracker",
+  "categories": [
+    "productivity_information"
+  ],
   "codeowners": [
     "@schrepfer"
   ],
