@@ -104,7 +104,7 @@ class _BaseTeamBinarySensor(
                     "opponent_abbr": target.opponent_abbr,
                     "is_home": target.is_home,
                     "game_date": target.game_date(local_tz).isoformat(),
-                    "start_utc": None if target.time_tbd else target.start_utc.isoformat(),
+                    "start_time": target.start_time(local_tz),
                     "time_tbd": target.time_tbd,
                     "venue": target.venue,
                     "broadcast": target.broadcast,

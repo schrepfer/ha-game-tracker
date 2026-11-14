@@ -261,6 +261,7 @@ class GameTrackerApiTests(unittest.TestCase):
         assert sea_info is not None
         games = api.parse_scoreboard_for_team(SAMPLE_SCOREBOARD, sea_info, sport="football")
         g = games[0]  # Sun Oct 25 10:00 AM PDT
+        self.assertEqual(g.start_time(pacific), "2026-10-25T10:00:00-07:00")
 
         # Saturday Oct 24 11:59 PM PDT -> OFF
         self.assertFalse(
@@ -302,6 +303,7 @@ class GameTrackerApiTests(unittest.TestCase):
             SAMPLE_SCOREBOARD, lv_info, sport="football"
         )[0]
         self.assertEqual(tbd_game.game_date(pacific), date(2027, 1, 10))
+        self.assertIsNone(tbd_game.start_time(pacific))
         self.assertFalse(
             tbd_game.is_on_game_day(
                 datetime(2027, 1, 10, 5, 30, tzinfo=timezone.utc),  # Sat Jan 9 9:30 PM PST

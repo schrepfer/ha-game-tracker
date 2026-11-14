@@ -207,7 +207,7 @@ Both entities expose the following state attributes:
 | `matchup` / `short_name` | `"Chicago Bears at Seattle Seahawks"` / `"CHI @ SEA"` | Current or next game on the scoreboard. |
 | `opponent` / `opponent_abbr` | `"Chicago Bears"` / `"CHI"` | Opponent name and abbreviation. |
 | `is_home` | `true` | Whether your team is the home team. |
-| `start_utc` | `"2026-11-03T01:15:00+00:00"` | Scheduled UTC start time (`null` if `time_tbd` is `true`). |
+| `start_time` | `"2026-10-25T13:25:00-07:00"` | Local ISO-8601 scheduled start time (`null` if `time_tbd` is `true`). |
 | `time_tbd` | `false` | `true` when start time has not been announced yet. |
 | `venue` / `broadcast` | `"Lumen Field"` / `"ESPN"` | Stadium name and TV/streaming broadcast network(s). |
 | `game_state` / `status_detail` | `"in"` / `"6:12 - 3rd"` | ESPN state (`pre`, `in`, `post`) and human-readable clock/status. |

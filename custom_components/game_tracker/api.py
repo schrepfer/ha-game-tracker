@@ -163,6 +163,12 @@ class TeamGame:
             return self.start_utc.astimezone(EASTERN_TZ).date()
         return self.start_utc.astimezone(local_tz).date()
 
+    def start_time(self, local_tz: tzinfo) -> str | None:
+        """Return the scheduled start time as a local ISO-8601 string, or None if TBD."""
+        if self.time_tbd:
+            return None
+        return self.start_utc.astimezone(local_tz).isoformat(timespec="seconds")
+
     def is_active(self, now: datetime) -> bool:
         """Return True if this game is currently active."""
         if self.time_tbd or self.status_name in CANCELLED_STATUSES:
